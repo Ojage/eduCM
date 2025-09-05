@@ -1,5 +1,6 @@
 import React from 'react';
-import { School, MapPin, Mail, Phone, ExternalLink } from 'lucide-react';
+import { MapPin, Mail, Phone, ExternalLink } from 'lucide-react';
+import logo_cm from "../asseets/images/logo_cm.jpg";
 
 const Footer: React.FC = () => {
   return (
@@ -9,16 +10,15 @@ const Footer: React.FC = () => {
           {/* Brand */}
           <div>
             <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <School className="h-6 w-6" />
-              </div>
+              <img src={logo_cm} alt="Logo" className="h-10 w-10 rounded-full" />
+
               <div>
                 <h3 className="font-bold text-xl">Cameroon Schools</h3>
                 <p className="text-gray-400 text-sm">Directory</p>
               </div>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
-              Your comprehensive resource for finding educational institutions 
+              Your comprehensive resource for finding educational institutions
               across all levels in Cameroon.
             </p>
           </div>
@@ -68,7 +68,7 @@ const Footer: React.FC = () => {
         {/* Bottom Bar */}
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row items-center justify-between">
           <p className="text-gray-400 text-sm">
-            © 2025 Cameroon Schools Directory. All rights reserved.
+            © 2025 eduCM -Cameroon Schools Directory. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Privacy Policy</a>
