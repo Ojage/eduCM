@@ -1,6 +1,6 @@
 import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Listbox, Transition } from "@headlessui/react";
-import { Search as SearchIcon, Filter, X, Check, ChevronsUpDown, Minimize2, Maximize2 } from "lucide-react";
+import { Search as SearchIcon, Filter, X, Check, ChevronsUpDown, ChevronUp, ChevronDown, Minimize2, Maximize2, SlidersHorizontal } from "lucide-react";
 import {
   SearchFilters as SearchFiltersType,
   EducationLevel,
@@ -38,6 +38,7 @@ interface SelectBoxProps {
   disabled?: boolean;
   ringClass?: string;
   "data-testid"?: string;
+  compact?: boolean;
 }
 
 export const SelectBox: React.FC<SelectBoxProps> = ({
@@ -48,6 +49,7 @@ export const SelectBox: React.FC<SelectBoxProps> = ({
   placeholder,
   disabled = false,
   ringClass = "focus:ring-green-600",
+  compact = false,
   ...rest
 }) => {
   const currentLabel =
@@ -55,14 +57,20 @@ export const SelectBox: React.FC<SelectBoxProps> = ({
 
   return (
     <div className="w-full" {...rest}>
-      <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
+      <label className={cx(
+        "block font-semibold text-gray-700 mb-1",
+        compact ? "text-xs" : "text-sm"
+      )}>
+        {label}
+      </label>
 
       <Listbox value={value} onChange={onChange} disabled={disabled}>
         {({ open }) => (
           <div className="relative">
             <Listbox.Button
               className={cx(
-                "w-full rounded-xl border border-gray-300 px-3 py-2 text-left outline-none transition-all",
+                "w-full rounded-lg border border-gray-300 text-left outline-none transition-all",
+                compact ? "px-2 py-1.5 text-sm" : "px-3 py-2",
                 disabled ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "",
                 !disabled ? `focus:ring-2 ${ringClass} focus:border-transparent` : ""
               )}
@@ -70,12 +78,17 @@ export const SelectBox: React.FC<SelectBoxProps> = ({
               <span className={cx("block truncate", !value ? "text-gray-500" : "")}>
                 {currentLabel}
               </span>
-              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                <ChevronsUpDown className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              <span className={cx(
+                "pointer-events-none absolute inset-y-0 flex items-center",
+                compact ? "right-2" : "right-3"
+              )}>
+                <ChevronsUpDown className={cx(
+                  "text-gray-400",
+                  compact ? "h-3 w-3" : "h-4 w-4"
+                )} aria-hidden="true" />
               </span>
             </Listbox.Button>
 
-            {/* IMPORTANT: let Headless UI control visibility */}
             <Transition
               as={Fragment}
               show={open}
@@ -85,11 +98,10 @@ export const SelectBox: React.FC<SelectBoxProps> = ({
             >
               <Listbox.Options
                 className={cx(
-                  "absolute z-50 mt-2 max-h-60 w-full overflow-auto rounded-xl bg-white py-1",
+                  "absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1",
                   "shadow-lg ring-1 ring-black/5 focus:outline-none"
                 )}
               >
-                {/* "All …" sentinel */}
                 <Listbox.Option
                   key="__all__"
                   value=""
@@ -149,11 +161,7 @@ export const SelectBox: React.FC<SelectBoxProps> = ({
 };
 
 /**
- * Headless UI refactor of the SearchFilters component with minimize/maximize functionality.
- * - Listbox for all selects
- * - Transition for initial slide/fade-in
- * - Minimizable interface to save space
- * - Preserves external props and onChange contracts
+ * Mobile-friendly, minimizable SearchFilters component
  */
 const SearchFilters: React.FC<SearchFiltersProps> = ({
   filters,
@@ -165,6 +173,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
 }) => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const {
     regions,
@@ -236,20 +245,23 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
     onFiltersChange({ division, town: "" });
   };
 
-  // Get active filter summary for minimized state
-  const getFilterSummary = () => {
-    const activeFilters = [];
-    if (filters.query) activeFilters.push(`"${filters.query}"`);
-    if (filters.level) activeFilters.push(filters.level);
-    if (filters.ownership) activeFilters.push(filters.ownership);
-    if (filters.region) activeFilters.push(filters.region);
-    if (filters.division) activeFilters.push(filters.division);
-    if (filters.town) activeFilters.push(filters.town);
-    
-    if (activeFilters.length === 0) return "No active filters";
-    if (activeFilters.length === 1) return activeFilters[0];
-    if (activeFilters.length <= 3) return activeFilters.join(", ");
-    return `${activeFilters.slice(0, 2).join(", ")} + ${activeFilters.length - 2} more`;
+  // Get active filter count
+  const getActiveFilterCount = () => {
+    return [
+      filters.query,
+      filters.level,
+      filters.ownership,
+      filters.region,
+      filters.division,
+      filters.town
+    ].filter(Boolean).length;
+  };
+
+  // Get filter summary for mobile
+  const getMobileFilterSummary = () => {
+    const count = getActiveFilterCount();
+    if (count === 0) return "All schools";
+    return `${count} filter${count > 1 ? 's' : ''} applied`;
   };
 
   return (
@@ -261,165 +273,281 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
       enterTo="translate-y-0 opacity-100"
     >
       <div className="bg-white border-b border-gray-200 sticky top-[8rem] z-40 shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          {/* Header with minimize/maximize toggle */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <Filter className="h-5 w-5 text-green-700" />
-              <h3 className="text-lg font-semibold text-gray-900">Search & Filters</h3>
-              {isMinimized && (
-                <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                  {getFilterSummary()}
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          
+          {/* Mobile Layout */}
+          <div className="sm:hidden">
+            {/* Mobile Header - Always Visible */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <SearchIcon className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-900">
+                  {totalResults} school{totalResults !== 1 ? 's' : ''}
                 </span>
-              )}
-            </div>
-            
-            <button
-              onClick={() => setIsMinimized(!isMinimized)}
-              className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              aria-label={isMinimized ? "Expand filters" : "Minimize filters"}
-            >
-              {isMinimized ? (
-                <>
-                  <Maximize2 className="h-4 w-4" />
-                  <span>Expand</span>
-                </>
-              ) : (
-                <>
-                  <Minimize2 className="h-4 w-4" />
-                  <span>Minimize</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Collapsible content */}
-          <Transition
-            show={!isMinimized}
-            enter="transition ease-out duration-300"
-            enterFrom="opacity-0 -translate-y-4 scale-y-95"
-            enterTo="opacity-100 translate-y-0 scale-y-100"
-            leave="transition ease-in duration-200"
-            leaveFrom="opacity-100 translate-y-0 scale-y-100"
-            leaveTo="opacity-0 -translate-y-4 scale-y-95"
-          >
-            <div className="space-y-6">
-              {/* 🔍 Search Bar */}
-              <div className="relative">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search schools, programs, or locations..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-600 focus:border-transparent outline-none transition-all"
-                  value={filters.query}
-                  onChange={(e) => onFiltersChange({ query: e.target.value })}
-                  aria-label="Search"
-                />
+                <span className="text-xs text-gray-500">•</span>
+                <span className="text-xs text-gray-500">{getMobileFilterSummary()}</span>
               </div>
+              <button
+                onClick={() => setShowMobileFilters(!showMobileFilters)}
+                className={cx(
+                  "flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded-md transition-colors",
+                  hasActiveFilters 
+                    ? "bg-blue-100 text-blue-700 hover:bg-blue-200" 
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                )}
+              >
+                <SlidersHorizontal className="h-3 w-3" />
+                <span>Filters</span>
+                {hasActiveFilters && (
+                  <span className="bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[16px] text-center leading-none">
+                    {getActiveFilterCount()}
+                  </span>
+                )}
+                {showMobileFilters ? (
+                  <ChevronUp className="h-3 w-3" />
+                ) : (
+                  <ChevronDown className="h-3 w-3" />
+                )}
+              </button>
+            </div>
 
-              {/* 🎯 Filters Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                {/* Education Level */}
-                <SelectBox
-                  label="Education Level"
-                  value={filters.level ?? ""}
-                  onChange={(v) => onFiltersChange({ level: (v as SearchFiltersType["level"]) || "" })}
-                  options={educationOptions}
-                  placeholder="All Levels"
-                  ringClass="focus:ring-green-600"
-                  data-testid="select-level"
-                />
+            {/* Mobile Search - Always Visible */}
+            <div className="relative mb-3">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search schools..."
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-transparent outline-none"
+                value={filters.query}
+                onChange={(e) => onFiltersChange({ query: e.target.value })}
+              />
+            </div>
 
-                {/* Ownership */}
-                <SelectBox
-                  label="Ownership"
-                  value={filters.ownership ?? ""}
-                  onChange={(v) =>
-                    onFiltersChange({ ownership: (v as SearchFiltersType["ownership"]) || "" })
-                  }
-                  options={ownershipOptions}
-                  placeholder="All Types"
-                  ringClass="focus:ring-red-600"
-                  data-testid="select-ownership"
-                />
+            {/* Mobile Filters - Collapsible */}
+            <Transition
+              show={showMobileFilters}
+              enter="transition ease-out duration-200"
+              enterFrom="opacity-0 -translate-y-2"
+              enterTo="opacity-100 translate-y-0"
+              leave="transition ease-in duration-150"
+              leaveFrom="opacity-100 translate-y-0"
+              leaveTo="opacity-0 -translate-y-2"
+            >
+              <div className="space-y-3 pb-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <SelectBox
+                    label="Level"
+                    value={filters.level ?? ""}
+                    onChange={(v) => onFiltersChange({ level: (v as SearchFiltersType["level"]) || "" })}
+                    options={educationOptions}
+                    placeholder="All Levels"
+                    compact
+                  />
+                  <SelectBox
+                    label="Type"
+                    value={filters.ownership ?? ""}
+                    onChange={(v) => onFiltersChange({ ownership: (v as SearchFiltersType["ownership"]) || "" })}
+                    options={ownershipOptions}
+                    placeholder="All Types"
+                    compact
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <SelectBox
+                    label="Region"
+                    value={selectedRegion ?? ""}
+                    onChange={handleRegionChange}
+                    options={regionOptions}
+                    placeholder="All Regions"
+                    compact
+                  />
+                  <SelectBox
+                    label="Division"
+                    value={selectedDivision ?? ""}
+                    onChange={handleDivisionChange}
+                    options={divisionOptions}
+                    placeholder="All Divisions"
+                    disabled={!selectedRegion}
+                    compact
+                  />
+                </div>
 
-                {/* Region */}
-                <SelectBox
-                  label="Region"
-                  value={selectedRegion ?? ""}
-                  onChange={handleRegionChange}
-                  options={regionOptions}
-                  placeholder="All Regions"
-                  ringClass="focus:ring-yellow-500"
-                  data-testid="select-region"
-                />
-
-                {/* Division */}
-                <SelectBox
-                  label="Division"
-                  value={selectedDivision ?? ""}
-                  onChange={handleDivisionChange}
-                  options={divisionOptions}
-                  placeholder="All Divisions"
-                  disabled={!selectedRegion}
-                  ringClass="focus:ring-yellow-500"
-                  data-testid="select-division"
-                />
-
-                {/* Town */}
-                <SelectBox
-                  label="Town"
-                  value={filters.town ?? ""}
-                  onChange={(v) => onFiltersChange({ town: v })}
-                  options={townOptions}
-                  placeholder="All Towns"
-                  disabled={!selectedDivision}
-                  ringClass="focus:ring-green-600"
-                  data-testid="select-town"
-                />
-
-                {/* Clear Filters */}
-                <div className="flex items-end">
-                  <button
-                    onClick={onClearFilters}
-                    disabled={!hasActiveFilters}
-                    className={cx(
-                      "w-full rounded-xl px-4 py-2 flex items-center justify-center space-x-2 transition-colors",
-                      "text-gray-700",
-                      hasActiveFilters
-                        ? "bg-gray-100 hover:bg-gray-200"
-                        : "bg-gray-50 text-gray-400 cursor-not-allowed"
-                    )}
-                    aria-label="Clear filters"
-                  >
-                    <X className="h-4 w-4" />
-                    <span className="text-sm">Clear</span>
-                  </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <SelectBox
+                    label="Town"
+                    value={filters.town ?? ""}
+                    onChange={(v) => onFiltersChange({ town: v })}
+                    options={townOptions}
+                    placeholder="All Towns"
+                    disabled={!selectedDivision}
+                    compact
+                  />
+                  <div className="flex items-end">
+                    <button
+                      onClick={onClearFilters}
+                      disabled={!hasActiveFilters}
+                      className={cx(
+                        "w-full rounded-lg px-3 py-1.5 text-xs font-medium transition-colors flex items-center justify-center space-x-1",
+                        hasActiveFilters
+                          ? "bg-red-100 text-red-700 hover:bg-red-200"
+                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      )}
+                    >
+                      <X className="h-3 w-3" />
+                      <span>Clear</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Transition>
+            </Transition>
+          </div>
 
-          {/* 📊 Results Count - Always visible */}
-          <div className={cx(
-            "flex items-center justify-between text-sm text-gray-600",
-            isMinimized ? "mt-0" : "mt-4"
-          )}>
-            <div className="flex items-center space-x-2">
-              <span className="font-medium">
-                {totalResults} school{totalResults !== 1 ? "s" : ""} found
-                {hasActiveFilters && " (filtered)"}
-              </span>
-            </div>
-            {hasActiveFilters && (
+          {/* Desktop Layout */}
+          <div className="hidden sm:block">
+            {/* Desktop Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <Filter className="h-5 w-5 text-green-700" />
+                <h3 className="text-lg font-semibold text-gray-900">Search & Filters</h3>
+                {isMinimized && (
+                  <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                    {hasActiveFilters ? `${getActiveFilterCount()} active` : "No filters"}
+                  </span>
+                )}
+              </div>
+              
               <button
-                onClick={onClearFilters}
-                className="text-blue-600 hover:text-blue-800 font-semibold"
+                onClick={() => setIsMinimized(!isMinimized)}
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                Show all schools
+                {isMinimized ? (
+                  <>
+                    <Maximize2 className="h-4 w-4" />
+                    <span>Expand</span>
+                  </>
+                ) : (
+                  <>
+                    <Minimize2 className="h-4 w-4" />
+                    <span>Minimize</span>
+                  </>
+                )}
               </button>
-            )}
+            </div>
+
+            {/* Desktop Collapsible Content */}
+            <Transition
+              show={!isMinimized}
+              enter="transition ease-out duration-300"
+              enterFrom="opacity-0 -translate-y-4 scale-y-95"
+              enterTo="opacity-100 translate-y-0 scale-y-100"
+              leave="transition ease-in duration-200"
+              leaveFrom="opacity-100 translate-y-0 scale-y-100"
+              leaveTo="opacity-0 -translate-y-4 scale-y-95"
+            >
+              <div className="space-y-6">
+                {/* Desktop Search Bar */}
+                <div className="relative">
+                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search schools, programs, or locations..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-600 focus:border-transparent outline-none transition-all"
+                    value={filters.query}
+                    onChange={(e) => onFiltersChange({ query: e.target.value })}
+                  />
+                </div>
+
+                {/* Desktop Filters Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                  <SelectBox
+                    label="Education Level"
+                    value={filters.level ?? ""}
+                    onChange={(v) => onFiltersChange({ level: (v as SearchFiltersType["level"]) || "" })}
+                    options={educationOptions}
+                    placeholder="All Levels"
+                    ringClass="focus:ring-green-600"
+                  />
+
+                  <SelectBox
+                    label="Ownership"
+                    value={filters.ownership ?? ""}
+                    onChange={(v) => onFiltersChange({ ownership: (v as SearchFiltersType["ownership"]) || "" })}
+                    options={ownershipOptions}
+                    placeholder="All Types"
+                    ringClass="focus:ring-red-600"
+                  />
+
+                  <SelectBox
+                    label="Region"
+                    value={selectedRegion ?? ""}
+                    onChange={handleRegionChange}
+                    options={regionOptions}
+                    placeholder="All Regions"
+                    ringClass="focus:ring-yellow-500"
+                  />
+
+                  <SelectBox
+                    label="Division"
+                    value={selectedDivision ?? ""}
+                    onChange={handleDivisionChange}
+                    options={divisionOptions}
+                    placeholder="All Divisions"
+                    disabled={!selectedRegion}
+                    ringClass="focus:ring-yellow-500"
+                  />
+
+                  <SelectBox
+                    label="Town"
+                    value={filters.town ?? ""}
+                    onChange={(v) => onFiltersChange({ town: v })}
+                    options={townOptions}
+                    placeholder="All Towns"
+                    disabled={!selectedDivision}
+                    ringClass="focus:ring-green-600"
+                  />
+
+                  <div className="flex items-end">
+                    <button
+                      onClick={onClearFilters}
+                      disabled={!hasActiveFilters}
+                      className={cx(
+                        "w-full rounded-xl px-4 py-2 flex items-center justify-center space-x-2 transition-colors",
+                        hasActiveFilters
+                          ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                          : "bg-gray-50 text-gray-400 cursor-not-allowed"
+                      )}
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="text-sm">Clear</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+
+            {/* Desktop Results Count */}
+            <div className={cx(
+              "flex items-center justify-between text-sm text-gray-600",
+              isMinimized ? "mt-0" : "mt-4"
+            )}>
+              <div className="flex items-center space-x-2">
+                <span className="font-medium">
+                  {totalResults} school{totalResults !== 1 ? "s" : ""} found
+                  {hasActiveFilters && " (filtered)"}
+                </span>
+              </div>
+              {hasActiveFilters && (
+                <button
+                  onClick={onClearFilters}
+                  className="text-blue-600 hover:text-blue-800 font-semibold"
+                >
+                  Show all schools
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
