@@ -33,7 +33,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchFocus }) => {
         />
       </svg>
 
-      {/* CSS for smooth color transition */}
+      {/* putinnn CSS for very smooth color transition */}
       <style>{`
       @keyframes colorPulse {
         0%, 100% { fill: #B45309; }   /* dark yellow */
